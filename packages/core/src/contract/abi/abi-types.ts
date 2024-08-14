@@ -43,7 +43,7 @@ type ABIReceiverNames<ABI extends ConstantContractABI> = AbiTypedReceiverNames<A
 // E.g. taking `{ name: 'bounced', type: { kind: 'simple', type: 'bool' } }` and producing `{ bounced: boolean }`
 
 // TODO: add support for kind:'dict' field type
-export type AbiFieldType = 'uint' | 'int' | 'cell' | 'slice' | 'address' | 'bool';
+export type AbiFieldType = 'uint' | 'int' | 'cell' | 'slice' | 'address' | 'bool' | 'dict';
 
 type AbiFieldMap = {
   uint: bigint;
@@ -52,6 +52,7 @@ type AbiFieldMap = {
   slice: string;
   address: string;
   bool: boolean;
+  dict: string;
 } & Record<string, string>;
 
 type AbiFieldRefType<ABI_FIELD extends ABIField> = ABI_FIELD['type'] extends {

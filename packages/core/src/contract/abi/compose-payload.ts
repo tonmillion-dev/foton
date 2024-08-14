@@ -1,7 +1,8 @@
-import { ABIType, Address, beginCell, Builder, Cell, Contract } from '@ton/core';
+import {ABIType, Address, beginCell, Builder, Cell, Contract, Dictionary, DictionaryKeyTypes} from '@ton/core';
 import type { ABITypeRef, ContractABI } from '@ton/core';
 
 import type { AbiFieldType } from './abi-types.js';
+import {Maybe} from "graphql/jsutils/Maybe.js";
 
 type PayloadSchema = Record<string, ABITypeRef>;
 
@@ -82,6 +83,10 @@ const fieldTypeValidators: Record<AbiFieldType, (builder: Builder, value: unknow
     const slice = Cell.fromBase64(value).asSlice();
     builder.storeSlice(slice);
   },
+  dict: (builder, value, format) => {
+    console.log('[DEBUG] store dict', value);
+    builder.storeDict(value as Maybe<Dictionary<DictionaryKeyTypes, unknown>>);
+  }
 }
 
 const validateSchema = (schema: PayloadSchema, payload: Record<string, unknown>, header?: number): string => {
@@ -93,12 +98,13 @@ const validateSchema = (schema: PayloadSchema, payload: Record<string, unknown>,
 
   Object.entries(schema).forEach(([key, field]) => {
     const value = payload[key];
+    console.log('[DEBUG] field type', field);
+    console.log('[DEBUG] field type', field.kind);
     if (field.kind === 'simple') {
       const optional = field.optional || true;
       if (!optional && (typeof value === 'undefined' || value === null)) {
         throw new Error(`Field ${key} is required`);
       }
-
       const typedField = field.type as AbiFieldType;
 
       // TODO: format might not be a number – check when it can be a string and fix this
@@ -106,6 +112,27 @@ const validateSchema = (schema: PayloadSchema, payload: Record<string, unknown>,
       if (validated instanceof Error) {
         throw new Error(`Payload validation failed for field "${key}": ${validated.message}`);
       }
+    } else if (field.kind === 'dict') {
+      console.log('[DEBUG] value::', value);
+      try {
+        const dict = value as Dictionary<number, number>;
+        const newDict = Dictionary.empty<number, number>(
+          Dictionary.Keys.Uint(16), Dictionary.Values.Uint(16)
+        );
+        const keys = dict.keys();
+        const values = dict.values();
+        console.log('[DEBUG] keys', keys);
+        console.log('[DEBUG] values', values);
+
+        for (let i = 0; i < keys.length; i++) {
+          newDict.set(keys[i], values[i]);
+        }
+        console.log('[DEBUG] newDict', newDict);
+        payloadBuilder.storeDict(newDict);
+      } catch (e) {
+        console.log('[ERROR]', e);
+      }
+
     } else {
       // TODO: add support for kind:'dict' field type
       throw new Error('Unsupported field type');
